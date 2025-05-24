@@ -211,41 +211,66 @@ class TypingTrainer {
     }
     
     getLeastAccurateLetters(count = 10) {
-        // Get all letters that have been typed in the last 500 characters
-        const typedLetters = Object.keys(this.letterStats)
-            .filter(letter => this.letterStats[letter].total > 0)
-            .map(letter => ({
-                letter: letter,
-                accuracy: this.letterStats[letter].accuracy,
-                total: this.letterStats[letter].total
-            }))
-            .sort((a, b) => {
-                // Sort by accuracy (lowest first), then by total attempts (highest first for more data)
-                if (a.accuracy !== b.accuracy) {
-                    return a.accuracy - b.accuracy;
-                }
-                return b.total - a.total;
-            });
+        // First, identify letters that need initial practice (less than 5 attempts)
+        const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+        const needsPractice = [];
+        const hasEnoughData = [];
         
-        // If we don't have enough typed letters, add letters that haven't been practiced
-        const result = typedLetters.slice(0, count).map(item => item.letter);
-        
-        // Ensure all letters get some practice by including unpracticed letters
-        if (result.length < count) {
-            const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
-            const unpracticedLetters = allLetters.filter(letter => !result.includes(letter));
-            
-            // Prioritize less common letters like z, j, q, x, etc.
-            const rareLetters = ['z', 'j', 'q', 'x', 'v', 'k', 'w', 'y'];
-            const prioritizedUnpracticed = [
-                ...unpracticedLetters.filter(letter => rareLetters.includes(letter)),
-                ...unpracticedLetters.filter(letter => !rareLetters.includes(letter))
-            ];
-            
-            while (result.length < count && prioritizedUnpracticed.length > 0) {
-                result.push(prioritizedUnpracticed.shift());
+        allLetters.forEach(letter => {
+            const stats = this.letterStats[letter];
+            if (stats.total < 5) {
+                // Letters with fewer than 5 attempts get maximum priority
+                needsPractice.push({
+                    letter: letter,
+                    accuracy: 0, // Treat as 0% accuracy for sorting
+                    total: stats.total,
+                    priority: 'needs-practice'
+                });
+            } else {
+                // Letters with enough data use actual accuracy
+                hasEnoughData.push({
+                    letter: letter,
+                    accuracy: stats.accuracy,
+                    total: stats.total,
+                    priority: 'has-data'
+                });
             }
-        }
+        });
+        
+        // Sort letters needing practice by total attempts (least practiced first)
+        needsPractice.sort((a, b) => {
+            if (a.total !== b.total) {
+                return a.total - b.total; // Least attempts first
+            }
+            // If same attempt count, prioritize rare letters
+            const rareLetters = ['z', 'j', 'q', 'x', 'v', 'k', 'w', 'y'];
+            const aIsRare = rareLetters.includes(a.letter);
+            const bIsRare = rareLetters.includes(b.letter);
+            if (aIsRare && !bIsRare) return -1;
+            if (!aIsRare && bIsRare) return 1;
+            return 0;
+        });
+        
+        // Sort letters with enough data by accuracy (lowest first)
+        hasEnoughData.sort((a, b) => {
+            if (a.accuracy !== b.accuracy) {
+                return a.accuracy - b.accuracy;
+            }
+            return b.total - a.total; // More data is better for tie-breaking
+        });
+        
+        // Combine: prioritize letters needing practice, then lowest accuracy
+        const result = [
+            ...needsPractice.slice(0, count).map(item => item.letter),
+            ...hasEnoughData.slice(0, count - needsPractice.length).map(item => item.letter)
+        ].slice(0, count);
+        
+        console.log('Letters needing practice (< 5 attempts):', needsPractice.map(item => 
+            `${item.letter}(${item.total})`
+        ));
+        console.log('Letters with data (≥ 5 attempts):', hasEnoughData.slice(0, 5).map(item => 
+            `${item.letter}(${item.accuracy}%)`
+        ));
         
         return result;
     }
@@ -257,9 +282,16 @@ class TypingTrainer {
         for (const letter of wordLetters) {
             const letterIndex = leastAccurateLetters.indexOf(letter);
             if (letterIndex !== -1) {
-                // Weight decreases from 10 for the worst letter to 1 for the 10th worst
-                const weight = 10 - letterIndex;
-                totalWeight += weight;
+                const stats = this.letterStats[letter];
+                
+                if (stats.total < 5) {
+                    // Letters with fewer than 5 attempts get maximum weight (10)
+                    totalWeight += 10;
+                } else {
+                    // Letters with enough data use position-based weight (10 down to 1)
+                    const weight = 10 - letterIndex;
+                    totalWeight += weight;
+                }
             }
         }
         
@@ -310,8 +342,15 @@ class TypingTrainer {
         for (const letter of wordLetters) {
             const letterIndex = leastAccurateLetters.indexOf(letter);
             if (letterIndex !== -1) {
-                const weight = 10 - letterIndex;
-                breakdown.push(`${letter}(${weight})`);
+                const stats = this.letterStats[letter];
+                
+                if (stats.total < 5) {
+                    // Show "needs practice" letters with special notation
+                    breakdown.push(`${letter}(10*)`);
+                } else {
+                    const weight = 10 - letterIndex;
+                    breakdown.push(`${letter}(${weight})`);
+                }
             }
         }
         
