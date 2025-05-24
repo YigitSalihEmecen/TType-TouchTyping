@@ -104,33 +104,34 @@ class TypingTrainer {
     }
     
     updateLetterAccuracy(letter, isCorrect) {
-        // Add to accuracy history
+        // Add to accuracy history for this session
         this.accuracyHistory.push({
             letter: letter.toLowerCase(),
             correct: isCorrect
         });
         
-        // Keep only last 500 characters
+        // Keep only last 500 characters for session tracking
         if (this.accuracyHistory.length > 500) {
             this.accuracyHistory = this.accuracyHistory.slice(-500);
         }
         
-        // Recalculate accuracy for this letter based on last 500 characters
-        const letterAttempts = this.accuracyHistory.filter(entry => entry.letter === letter.toLowerCase());
-        const correctAttempts = letterAttempts.filter(entry => entry.correct).length;
-        
-        if (letterAttempts.length > 0) {
-            const accuracy = Math.round((correctAttempts / letterAttempts.length) * 100);
+        // Update the stored letter stats by incrementing the existing counts
+        const letterKey = letter.toLowerCase();
+        if (this.letterStats[letterKey]) {
+            // Increment total and correct counts from existing Firebase data
+            this.letterStats[letterKey].total++;
+            if (isCorrect) {
+                this.letterStats[letterKey].correct++;
+            }
             
-            // Update the letter stats
-            this.letterStats[letter.toLowerCase()] = {
-                correct: correctAttempts,
-                total: letterAttempts.length,
-                accuracy: accuracy
-            };
+            // Recalculate accuracy based on cumulative data (including previous sessions)
+            const accuracy = this.letterStats[letterKey].total > 0 ? 
+                Math.round((this.letterStats[letterKey].correct / this.letterStats[letterKey].total) * 100) : 100;
+            
+            this.letterStats[letterKey].accuracy = accuracy;
             
             // Update the display
-            const circle = document.getElementById(`circle-${letter.toLowerCase()}`);
+            const circle = document.getElementById(`circle-${letterKey}`);
             if (circle) {
                 const accuracyValue = circle.querySelector('.accuracy-value');
                 accuracyValue.textContent = `${accuracy}%`;
@@ -316,9 +317,9 @@ class TypingTrainer {
         const leastAccurateLetters = this.getLeastAccurateLetters(10);
         console.log('Least accurate letters (ranked):', leastAccurateLetters);
         
-        // Choose 50 random words from the word list
+        // Choose 100 random words from the word list
         const candidateWords = [];
-        for (let i = 0; i < 50 && i < this.words.length; i++) {
+        for (let i = 0; i < 100 && i < this.words.length; i++) {
             const randomIndex = Math.floor(Math.random() * this.words.length);
             candidateWords.push(this.words[randomIndex]);
         }
@@ -376,7 +377,7 @@ class TypingTrainer {
         this.textContent = [];
         
         // Generate enough text to fill screen and have buffer
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 100; i++) {
             this.addRandomWord();
         }
         
@@ -831,6 +832,14 @@ class TypingTrainer {
     startSession() {
         if (!this.sessionStartTime) {
             this.sessionStartTime = Date.now();
+            
+            // Reset session-specific tracking for clean session data
+            this.accuracyHistory = [];
+            this.generalAccuracyHistory = [];
+            this.wordCompletionTimes = [];
+            this.wordsCompleted = 0;
+            this.totalCharacters = 0;
+            this.correctCharacters = 0;
         }
     }
     
@@ -856,8 +865,14 @@ class TypingTrainer {
             console.log('Session saved to Firebase:', sessionData);
         }
         
-        // Reset session
+        // Reset session tracking for next session
         this.sessionStartTime = null;
+        this.accuracyHistory = [];
+        this.generalAccuracyHistory = [];
+        this.wordCompletionTimes = [];
+        this.wordsCompleted = 0;
+        this.totalCharacters = 0;
+        this.correctCharacters = 0;
     }
     
     getSessionLetterStats() {

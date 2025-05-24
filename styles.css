@@ -4,6 +4,52 @@
     box-sizing: border-box;
 }
 
+/* Logo Styles */
+.logo-container {
+    position: fixed !important;
+    top: 15px !important;
+    left: 15px !important;
+    z-index: 1000 !important;
+    display: flex !important;
+    align-items: center !important;
+    pointer-events: none;
+}
+
+.main-logo {
+    height: 100px !important;
+    width: auto !important;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3)) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    pointer-events: auto;
+}
+
+.main-logo:hover {
+    transform: scale(1.1) !important;
+}
+
+/* Responsive logo adjustments */
+@media (max-width: 768px) {
+    .logo-container {
+        top: 12px !important;
+        left: 12px !important;
+    }
+    
+    .main-logo {
+        height: 18px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo-container {
+        top: 10px !important;
+        left: 10px !important;
+    }
+    
+    .main-logo {
+        height: 16px !important;
+    }
+}
+
 body {
     font-family: 'DM Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
     background: linear-gradient(135deg, #2C2C2C 0%, #5A5A5A 35%, #7BA3B0 70%, #E8E8E8 100%);
