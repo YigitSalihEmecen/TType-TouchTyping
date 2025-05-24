@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TType - Touch Typing Trainer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap"
+    rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="text-container">
+        <div class="wpm-counter" id="wpmCounter">
+            <span class="wpm-label">WPM</span>
+            <span class="wpm-value" id="wpmValue">0</span>
+        </div>
+        <div class="text-display" id="textDisplay">
+            <!-- Words will be dynamically inserted here -->
+        </div>
+        <div class="cursor" id="cursor"></div>
+        <div class="instruction">Press any key to start...</div>
+    </div>
+    
+    <div class="letter-accuracy" id="letterAccuracy">
+        <!-- Letter accuracy circles will be generated here -->
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
