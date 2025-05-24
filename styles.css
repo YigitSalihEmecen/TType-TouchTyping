@@ -52,7 +52,7 @@ body {
     top: 50%;
     left: 50%;
     transform: translateY(-50%);
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
     white-space: nowrap;
 }
 
@@ -96,15 +96,20 @@ body {
     color: rgba(255, 255, 255, 0.45);
 }
 
-.letter.incorrect {
-    color: #FF8A95;
-    text-shadow: 0 0 8px rgba(255, 138, 149, 0.4);
-}
-
 .letter.current {
     color: #ffffff;
     font-weight: 500;
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.letter.struggled {
+    color: #FF8A95;
+    text-shadow: 0 0 8px rgba(255, 138, 149, 0.4);
+}
+
+.letter.was-incorrect {
+    color: rgba(255, 138, 149, 0.6);
+    text-shadow: 0 0 4px rgba(255, 138, 149, 0.2);
 }
 
 .letter.permanently-incorrect {
@@ -189,11 +194,18 @@ body {
     opacity: 0.9;
 }
 
-.wpm-counter {
+.stats-container {
     position: absolute;
     top: -100px;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    gap: 60px;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.wpm-counter {
     font-family: 'DM Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
     font-size: 2.5rem;
     font-weight: 300;
@@ -224,11 +236,8 @@ body {
 }
 
 .general-accuracy {
-    position: absolute;
-    top: -100px;
-    right: 20px;
     font-family: 'DM Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
-    font-size: 1.5rem;
+    font-size: 2.5rem;
     font-weight: 300;
     color: rgba(255, 255, 255, 0.9);
     text-align: center;
@@ -238,7 +247,7 @@ body {
 }
 
 .general-accuracy-label {
-    font-size: 0.8rem;
+    font-size: 1rem;
     color: rgba(255, 255, 255, 0.6);
     text-transform: uppercase;
     letter-spacing: 0.15em;
@@ -248,7 +257,7 @@ body {
 }
 
 .general-accuracy-value {
-    font-size: 2rem;
+    font-size: 3rem;
     color: #7BA3B0;
     display: block;
     font-weight: 300;
@@ -266,8 +275,12 @@ body {
         min-height: 100px;
     }
     
+    .stats-container {
+        top: -70px;
+        gap: 40px;
+    }
+    
     .wpm-counter {
-        top: -80px;
         font-size: 2rem;
     }
     
@@ -279,6 +292,20 @@ body {
         font-size: 0.9rem;
         letter-spacing: 0.12em;
         margin-bottom: 2px;
+    }
+    
+    .general-accuracy {
+        font-size: 2rem;
+    }
+    
+    .general-accuracy-label {
+        font-size: 0.9rem;
+        letter-spacing: 0.12em;
+        margin-bottom: 2px;
+    }
+    
+    .general-accuracy-value {
+        font-size: 2.5rem;
     }
     
     .text-display {
@@ -317,21 +344,5 @@ body {
     
     .keyboard-row.bottom-row {
         margin-left: 48px;
-    }
-    
-    .general-accuracy {
-        top: -80px;
-        right: 15px;
-        font-size: 1.2rem;
-    }
-    
-    .general-accuracy-label {
-        font-size: 0.7rem;
-        letter-spacing: 0.12em;
-        margin-bottom: 2px;
-    }
-    
-    .general-accuracy-value {
-        font-size: 1.5rem;
     }
 } 

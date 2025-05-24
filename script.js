@@ -362,9 +362,9 @@ class TypingTrainer {
             span.className = 'letter';
             span.setAttribute('data-index', index);
             
-            if (item.staysIncorrect) {
-                // Letters that were typed incorrectly stay red permanently
-                span.classList.add('permanently-incorrect');
+            if (item.wasStruggled) {
+                // Letters that were struggled with (had incorrect attempts) show as red after advancing
+                span.classList.add('struggled');
             } else if (item.isCorrect) {
                 span.classList.add('correct');
             } else if (item.isIncorrect) {
@@ -398,14 +398,28 @@ class TypingTrainer {
         const textOffset = 8; // pixels to offset text to the left
         
         // Move text left by the actual cumulative width plus offset
-        // Remove transition temporarily to prevent drift
-        this.textContentElement.style.transition = 'none';
-        this.textContentElement.style.transform = `translateY(-50%) translateX(-${totalWidth + textOffset}px)`;
+        // Only disable transition if we're making a large jump (like adding new words)
+        const newTransform = `translateY(-50%) translateX(-${totalWidth + textOffset}px)`;
         
-        // Re-enable transition after a brief delay for smooth future movements
-        setTimeout(() => {
-            this.textContentElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        }, 10);
+        // Check if this is a significant position change (more than 5 characters)
+        const previousPosition = this.previousPosition || 0;
+        const positionDiff = Math.abs(this.currentPosition - previousPosition);
+        
+        if (positionDiff > 5) {
+            // Large jump - disable transition temporarily
+            this.textContentElement.style.transition = 'none';
+            this.textContentElement.style.transform = newTransform;
+            
+            // Re-enable transition after a brief delay
+            setTimeout(() => {
+                this.textContentElement.style.transition = 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)';
+            }, 10);
+        } else {
+            // Normal advancement - keep smooth transition
+            this.textContentElement.style.transform = newTransform;
+        }
+        
+        this.previousPosition = this.currentPosition;
     }
     
     initializeEventListeners() {
@@ -476,14 +490,19 @@ class TypingTrainer {
         const typedChar = e.key.toLowerCase();
         const expectedChar = currentItem.char.toLowerCase();
         
-        // Update total characters count
-        this.totalCharacters++;
-        
         // Check if the keystroke matches
         if (typedChar === expectedChar) {
             // Correct keystroke
             currentItem.isCorrect = true;
             currentItem.isIncorrect = false;
+            
+            // If this letter had previous incorrect attempts, mark it as struggled with
+            if (currentItem.wasIncorrect) {
+                currentItem.wasStruggled = true;
+            }
+            
+            // Update total characters count only on correct advancement
+            this.totalCharacters++;
             this.correctCharacters++;
             
             // Record correct keystroke for WPM calculation
@@ -497,12 +516,12 @@ class TypingTrainer {
                 this.updateLetterAccuracy(expectedChar, true);
             }
             
-            // Move to next position
+            // Move to next position only on correct keystroke
             this.currentPosition++;
         } else {
-            // Incorrect keystroke - mark as incorrect and move forward anyway
-            currentItem.isIncorrect = true;
-            currentItem.staysIncorrect = true; // Mark to stay red permanently
+            // Incorrect keystroke - just mark that this letter had incorrect attempts
+            // Don't change visual state yet - that happens when we advance
+            currentItem.wasIncorrect = true;
             
             // Record incorrect keystroke for WPM calculation
             this.recordKeystroke(false);
@@ -510,13 +529,16 @@ class TypingTrainer {
             // Record for general accuracy
             this.recordGeneralAccuracy(false);
             
-            // Update letter-specific accuracy for letters (not spaces)
+            // Update letter-specific accuracy for the expected letter (not the typed one)
             if (expectedChar !== ' ' && expectedChar.match(/[a-z]/)) {
                 this.updateLetterAccuracy(expectedChar, false);
             }
             
-            // Still move to next position (no backspace allowed)
-            this.currentPosition++;
+            // Update total characters count for accuracy calculation
+            this.totalCharacters++;
+            
+            // DON'T move to next position - wait for correct key
+            // DON'T change visual state - letter stays normal until we advance
         }
         
         this.renderText();
