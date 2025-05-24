@@ -19,7 +19,15 @@
             </div>
             <div class="user-details">
                 <span id="userName">User Name</span>
-                <button id="logoutBtn" class="auth-btn logout-btn">Logout</button>
+                <div class="user-buttons">
+                    <button id="logoutBtn" class="auth-btn logout-btn">Logout</button>
+                    <button id="statsToggle" class="auth-btn stats-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M3 3h18v18H3V3zm16 16V5H5v14h14zM7 10h2v7H7v-7zm4-3h2v10h-2V7zm4 1h2v9h-2V8z"/>
+                        </svg>
+                        Stats
+                    </button>
+                </div>
             </div>
         </div>
         <div class="login-section" id="loginSection">
@@ -35,6 +43,46 @@
         </div>
     </div>
 
+    <!-- Stats Panel -->
+    <div class="stats-panel" id="statsPanel" style="display: none;">
+        <div class="stats-panel-header">
+            <h3>Your Statistics</h3>
+            <button id="closeStats" class="close-btn">&times;</button>
+        </div>
+        <div class="stats-content">
+            <div class="stats-overview">
+                <div class="stat-item">
+                    <span class="stat-label">Best WPM</span>
+                    <span class="stat-value" id="bestWPM">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Average WPM</span>
+                    <span class="stat-value" id="averageWPM">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Best Accuracy</span>
+                    <span class="stat-value" id="bestAccuracy">0%</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Words</span>
+                    <span class="stat-value" id="totalWords">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Sessions</span>
+                    <span class="stat-value" id="totalSessions">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Time Practiced</span>
+                    <span class="stat-value" id="totalTime">0m</span>
+                </div>
+            </div>
+            <div class="wpm-graph-container">
+                <h4>WPM Progress</h4>
+                <canvas id="wpmChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
     <div class="text-container">
         <div class="stats-container">
             <div class="wpm-counter" id="wpmCounter">
@@ -43,7 +91,7 @@
             </div>
             <div class="general-accuracy" id="generalAccuracy">
                 <span class="general-accuracy-label">ACCURACY</span>
-                <span class="general-accuracy-value" id="generalAccuracyValue">100</span>
+                <span class="general-accuracy-value" id="generalAccuracyValue">0</span>
             </div>
         </div>
         <div class="text-display" id="textDisplay">

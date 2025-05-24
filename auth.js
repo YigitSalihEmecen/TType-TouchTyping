@@ -36,6 +36,8 @@ class AuthManager {
     setupEventListeners() {
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
+        const statsToggle = document.getElementById('statsToggle');
+        const closeStats = document.getElementById('closeStats');
 
         if (loginBtn) {
             loginBtn.addEventListener('click', () => this.signInWithGoogle());
@@ -43,6 +45,14 @@ class AuthManager {
 
         if (logoutBtn) {
             logoutBtn.addEventListener('click', () => this.logout());
+        }
+
+        if (statsToggle) {
+            statsToggle.addEventListener('click', () => this.toggleStatsPanel());
+        }
+
+        if (closeStats) {
+            closeStats.addEventListener('click', () => this.closeStatsPanel());
         }
     }
 
@@ -70,6 +80,8 @@ class AuthManager {
         const userInfo = document.getElementById('userInfo');
         const userName = document.getElementById('userName');
         const userAvatar = document.getElementById('userAvatar');
+        const statsPanel = document.getElementById('statsPanel');
+        const authContainer = document.getElementById('authContainer');
 
         if (user) {
             // User is signed in
@@ -96,6 +108,8 @@ class AuthManager {
             // Update UI
             loginSection.style.display = 'block';
             userInfo.style.display = 'none';
+            statsPanel.style.display = 'none';
+            authContainer.classList.remove('stats-open');
             
             // Notify typing trainer that user signed out
             if (window.typingTrainer) {
@@ -256,6 +270,162 @@ class AuthManager {
 
     isAuthenticated() {
         return !!this.currentUser;
+    }
+
+    toggleStatsPanel() {
+        const statsPanel = document.getElementById('statsPanel');
+        if (statsPanel.style.display === 'none' || !statsPanel.style.display) {
+            this.showStatsPanel();
+        } else {
+            this.closeStatsPanel();
+        }
+    }
+
+    showStatsPanel() {
+        const statsPanel = document.getElementById('statsPanel');
+        const authContainer = document.getElementById('authContainer');
+        
+        statsPanel.style.display = 'block';
+        authContainer.classList.add('stats-open');
+        this.updateStatsDisplay();
+    }
+
+    closeStatsPanel() {
+        const statsPanel = document.getElementById('statsPanel');
+        const authContainer = document.getElementById('authContainer');
+        
+        authContainer.classList.remove('stats-open');
+        // Delay hiding the panel to allow animation to complete
+        setTimeout(() => {
+            statsPanel.style.display = 'none';
+        }, 300);
+    }
+
+    updateStatsDisplay() {
+        if (!this.userStats) return;
+
+        // Update overview stats
+        document.getElementById('bestWPM').textContent = this.userStats.bestWPM || 0;
+        document.getElementById('averageWPM').textContent = this.userStats.averageWPM || 0;
+        document.getElementById('bestAccuracy').textContent = `${this.userStats.bestAccuracy || 0}%`;
+        document.getElementById('totalWords').textContent = this.userStats.totalWordsTyped || 0;
+        document.getElementById('totalSessions').textContent = this.userStats.sessionsCompleted || 0;
+        
+        // Format time
+        const totalMinutes = Math.round((this.userStats.totalTimeSpent || 0) / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        const timeText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        document.getElementById('totalTime').textContent = timeText;
+
+        // Draw WPM chart
+        this.drawWPMChart();
+    }
+
+    drawWPMChart() {
+        const canvas = document.getElementById('wpmChart');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas size for high DPI displays
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+        // Clear canvas
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        if (!this.userStats || !this.userStats.recentSessions || this.userStats.recentSessions.length === 0) {
+            // Draw "No data" message
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.font = '14px DM Mono';
+            ctx.textAlign = 'center';
+            ctx.fillText('No data yet - start typing!', rect.width / 2, rect.height / 2);
+            return;
+        }
+
+        const sessions = this.userStats.recentSessions.slice().reverse(); // Oldest to newest
+        const maxSessions = 20; // Show last 20 sessions
+        const displaySessions = sessions.slice(-maxSessions);
+
+        if (displaySessions.length === 0) return;
+
+        // Chart dimensions
+        const padding = 40;
+        const chartWidth = rect.width - 2 * padding;
+        const chartHeight = rect.height - 2 * padding;
+
+        // Find WPM range
+        const wpmValues = displaySessions.map(s => s.wpm);
+        const minWPM = Math.max(0, Math.min(...wpmValues) - 5);
+        const maxWPM = Math.max(...wpmValues) + 5;
+
+        // Draw grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        
+        // Horizontal grid lines
+        for (let i = 0; i <= 5; i++) {
+            const y = padding + (chartHeight * i) / 5;
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(rect.width - padding, y);
+            ctx.stroke();
+        }
+
+        // Vertical grid lines
+        for (let i = 0; i <= 5; i++) {
+            const x = padding + (chartWidth * i) / 5;
+            ctx.beginPath();
+            ctx.moveTo(x, padding);
+            ctx.lineTo(x, rect.height - padding);
+            ctx.stroke();
+        }
+
+        // Draw WPM line
+        ctx.strokeStyle = '#7BA3B0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+
+        displaySessions.forEach((session, index) => {
+            const x = padding + (chartWidth * index) / (displaySessions.length - 1);
+            const y = padding + chartHeight - ((session.wpm - minWPM) / (maxWPM - minWPM)) * chartHeight;
+            
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        ctx.stroke();
+
+        // Draw data points
+        ctx.fillStyle = '#7BA3B0';
+        displaySessions.forEach((session, index) => {
+            const x = padding + (chartWidth * index) / (displaySessions.length - 1);
+            const y = padding + chartHeight - ((session.wpm - minWPM) / (maxWPM - minWPM)) * chartHeight;
+            
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+
+        // Draw labels
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.font = '10px DM Mono';
+        ctx.textAlign = 'center';
+
+        // Y-axis labels (WPM values)
+        ctx.textAlign = 'right';
+        for (let i = 0; i <= 5; i++) {
+            const wpm = Math.round(minWPM + ((maxWPM - minWPM) * (5 - i)) / 5);
+            const y = padding + (chartHeight * i) / 5;
+            ctx.fillText(wpm.toString(), padding - 5, y + 3);
+        }
+
+        // X-axis label
+        ctx.textAlign = 'center';
+        ctx.fillText('Recent Sessions', rect.width / 2, rect.height - 10);
     }
 }
 

@@ -709,7 +709,7 @@ class TypingTrainer {
     
     calculateGeneralAccuracy() {
         if (this.generalAccuracyHistory.length === 0) {
-            return 100;
+            return 0;
         }
         
         const correctCount = this.generalAccuracyHistory.filter(entry => entry.correct).length;
