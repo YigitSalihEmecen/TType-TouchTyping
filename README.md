@@ -1,44 +1,82 @@
-# TType - Smart Touch Typing Trainer
+# TType - Touch Typing Trainer
 
-A modern typing trainer that adapts to your weaknesses, focusing practice on your most problematic letters for faster improvement.
+A modern, web-based touch typing trainer with intelligent word selection and comprehensive accuracy tracking.
 
 ## Features
 
-- **Smart Word Selection**: Analyzes your accuracy and selects words containing letters you struggle with
-- **Real-Time Metrics**: Live WPM and accuracy tracking with 15-second rolling averages  
-- **QWERTY Layout Display**: Letter accuracy shown in familiar keyboard layout
-- **Clean UI**: Minimal design with smooth animations and responsive layout
-- **No Backspace**: Encourages proper muscle memory by preventing corrections
+- **Google Authentication**: Sign in to save your progress and track statistics across sessions
+- **Intelligent Word Selection**: Targets your weakest letters for focused improvement
+- **Real-time Performance Tracking**: Live WPM counter and accuracy monitoring
+- **Letter-specific Accuracy**: Visual feedback for each letter in QWERTY keyboard layout
+- **Cloud Storage**: All your typing statistics saved to Firebase
+- **Infinite Scrolling**: Continuous text generation keeps you typing without interruption
+- **Progress Persistence**: Your statistics and accuracy data are preserved between sessions
 
-## How to Run
+## Quick Start
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/YigitSalihEmecen/TType.git
-   cd TType
-   ```
+### For Users
+1. Visit the live application at your GitHub Pages URL
+2. Click "Sign in with Google" to save your progress (optional)
+3. Press any key to start typing
+4. Follow the moving cursor and type the displayed text
+5. Track your improvement over time with saved statistics
 
-2. **Start a local server** (required for loading word files)
+### For Developers
+1. Clone this repository
+2. Set up Firebase (see [Firebase Setup Guide](FIREBASE_SETUP.md))
+3. Update the Firebase configuration in `index.html`
+4. Host the files on a web server
+5. Add your domain to Firebase authorized domains
+
+## Firebase Integration
+
+The application includes comprehensive Firebase integration for:
+- **User Authentication**: Google sign-in with profile management
+- **Statistics Tracking**: Persistent WPM, accuracy, and letter-specific data
+- **Session Management**: Automatic saving every 100 words typed
+- **Progress History**: Track improvement over multiple sessions
+- **Cross-device Sync**: Access your stats from any device
+
+### Statistics Tracked
+- Total words and characters typed
+- Best and average WPM
+- Letter-specific accuracy (a-z)
+- Session history and performance trends
+- Time spent practicing
+
+## Setup Instructions
+
+1. **Local Development**:
    ```bash
    python3 -m http.server 8000
+   # Visit http://localhost:8000
    ```
 
-3. **Open in browser**
-   ```
-   http://localhost:8000
-   ```
+2. **Firebase Setup**:
+   - Follow the detailed [Firebase Setup Guide](FIREBASE_SETUP.md)
+   - Configure authentication and Firestore database
+   - Update `index.html` with your Firebase configuration
 
-## How It Works
+3. **Deploy to GitHub Pages**:
+   - Push to your repository
+   - Enable GitHub Pages in repository settings
+   - Add your GitHub Pages URL to Firebase authorized domains
 
-1. **Type the highlighted letter** - text only advances when you type correctly
-2. **Letters turn red** after advancing if you made mistakes on them  
-3. **Algorithm learns** from your mistakes and serves words with your weak letters
-4. **Track progress** with real-time WPM and per-letter accuracy stats
+## File Structure
 
-## Tech Stack
+- `index.html` - Main application with Firebase configuration
+- `script.js` - Core typing trainer logic with Firebase integration
+- `auth.js` - Authentication and data management
+- `styles.css` - Application styling and responsive design
+- `words_common.txt` - Curated word list for typing practice
+- `FIREBASE_SETUP.md` - Comprehensive Firebase setup guide
 
-- Vanilla JavaScript, HTML5, CSS3
-- Uses `words_common.txt` for intelligent word selection
-- No frameworks or dependencies
+## Technical Details
 
-**Start typing to improve your touch typing skills!** 
+- **Framework**: Vanilla JavaScript with Firebase SDK
+- **Authentication**: Firebase Auth with Google provider
+- **Database**: Cloud Firestore for user data storage
+- **Hosting**: Compatible with GitHub Pages, Firebase Hosting, or any static host
+- **Security**: Firestore rules ensure users can only access their own data
+
+The intelligent algorithm prioritizes letters with poor accuracy and ensures comprehensive coverage of all letters in the alphabet for balanced skill development. 

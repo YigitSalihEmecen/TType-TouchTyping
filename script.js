@@ -6,6 +6,7 @@ class TypingTrainer {
         this.totalCharacters = 0;
         this.correctCharacters = 0;
         this.isStarted = false;
+        this.sessionStartTime = null;
         
         // WPM tracking - now based on word completion
         this.wordsCompleted = 0;
@@ -25,6 +26,10 @@ class TypingTrainer {
         this.currentWordStartIndex = 0;
         this.currentWordCorrect = true;
         
+        // Firebase integration
+        this.isAuthenticated = false;
+        this.userStats = null;
+        
         // DOM elements
         this.textDisplay = document.getElementById('textDisplay');
         this.instruction = document.querySelector('.instruction');
@@ -43,6 +48,9 @@ class TypingTrainer {
         this.initializeEventListeners();
         this.loadWords();
         this.startGeneralAccuracyTracking();
+        
+        // Make available globally for auth manager
+        window.typingTrainer = this;
     }
     
     initializeLetterStats() {
@@ -509,6 +517,7 @@ class TypingTrainer {
             this.isStarted = true;
             this.instruction.textContent = '';
             this.cursor.style.display = 'block';
+            this.startSession(); // Start session tracking
         }
         
         // Only process single characters and space
@@ -617,6 +626,11 @@ class TypingTrainer {
             
             this.wordsCompleted++;
             
+            // Auto-save session every 100 words for authenticated users
+            if (this.isAuthenticated && this.wordsCompleted % 100 === 0) {
+                this.saveCurrentSession();
+            }
+            
             // Check if we should update WPM (every 10 words)
             if (this.wordsCompleted % 10 === 0) {
                 this.updateWpmAfter10Words();
@@ -625,6 +639,29 @@ class TypingTrainer {
             // Reset for next word
             this.wordStartTime = null;
             this.currentWordCorrect = true;
+        }
+    }
+    
+    async saveCurrentSession() {
+        if (!this.isAuthenticated || !this.sessionStartTime) return;
+        
+        const sessionDuration = Date.now() - this.sessionStartTime;
+        const currentWPM = this.calculateCurrentWPM();
+        const currentAccuracy = this.calculateGeneralAccuracy();
+        
+        const sessionData = {
+            wpm: currentWPM,
+            accuracy: currentAccuracy,
+            wordsTyped: this.wordsCompleted,
+            charactersTyped: this.totalCharacters,
+            timeSpent: sessionDuration,
+            letterStats: this.getSessionLetterStats()
+        };
+        
+        // Save to Firebase
+        if (window.authManager) {
+            await window.authManager.recordSession(sessionData);
+            console.log('Auto-saved session at', this.wordsCompleted, 'words');
         }
     }
     
@@ -703,9 +740,163 @@ class TypingTrainer {
             clearInterval(this.wpmUpdateInterval);
         }
     }
+    
+    // Firebase integration methods
+    onUserAuthenticated(userStats) {
+        this.isAuthenticated = true;
+        this.userStats = userStats;
+        
+        // Load user's letter statistics
+        if (userStats && userStats.letterStats) {
+            this.letterStats = { ...userStats.letterStats };
+            this.updateAllLetterAccuracyDisplays();
+        }
+        
+        console.log('User authenticated, stats loaded');
+        this.instruction.textContent = `Welcome back, ${userStats.displayName || 'User'}! Press any key to start...`;
+    }
+    
+    onUserSignedOut() {
+        this.isAuthenticated = false;
+        this.userStats = null;
+        
+        // Reset to default letter stats
+        this.initializeLetterStats();
+        this.updateAllLetterAccuracyDisplays();
+        
+        console.log('User signed out, reset to guest mode');
+        this.instruction.textContent = 'Press any key to start...';
+    }
+    
+    updateAllLetterAccuracyDisplays() {
+        // Update all letter circles with current stats
+        for (const letter in this.letterStats) {
+            const circle = document.getElementById(`circle-${letter}`);
+            if (circle) {
+                const stats = this.letterStats[letter];
+                const accuracyValue = circle.querySelector('.accuracy-value');
+                if (accuracyValue) {
+                    accuracyValue.textContent = `${stats.accuracy}%`;
+                }
+                this.updateLetterCircleColor(circle, stats.accuracy);
+            }
+        }
+    }
+    
+    updateLetterCircleColor(circle, accuracy) {
+        // Update circle color based on accuracy
+        circle.classList.remove('good', 'excellent');
+        
+        const normalizedAccuracy = Math.max(0, Math.min(100, accuracy));
+        let backgroundColor, borderColor;
+        
+        if (normalizedAccuracy >= 20) {
+            const factor = (normalizedAccuracy - 20) / 80; // 0 to 1 (80% range)
+            
+            let red, green, blue;
+            
+            if (factor <= 0.5) {
+                const localFactor = factor * 2; // 0 to 1
+                red = Math.round(44 * (1 - localFactor) + 90 * localFactor);
+                green = Math.round(44 * (1 - localFactor) + 90 * localFactor);
+                blue = Math.round(44 * (1 - localFactor) + 90 * localFactor);
+            } else {
+                const localFactor = (factor - 0.5) * 2; // 0 to 1
+                red = Math.round(90 * (1 - localFactor) + 123 * localFactor);
+                green = Math.round(90 * (1 - localFactor) + 163 * localFactor);
+                blue = Math.round(90 * (1 - localFactor) + 176 * localFactor);
+            }
+            
+            backgroundColor = `rgb(${red}, ${green}, ${blue})`;
+            borderColor = `rgba(255, 255, 255, ${0.2 + factor * 0.25})`;
+            
+            if (normalizedAccuracy >= 80) {
+                backgroundColor = `linear-gradient(135deg, rgb(${red}, ${green}, ${blue}), #7BA3B0)`;
+            }
+        } else {
+            backgroundColor = `linear-gradient(135deg, #1A1A1A, #0F0F0F)`;
+            borderColor = 'rgba(255, 255, 255, 0.1)';
+        }
+        
+        circle.style.background = backgroundColor;
+        circle.style.borderColor = borderColor;
+        
+        if (normalizedAccuracy >= 90) {
+            circle.style.boxShadow = `0 8px 20px rgba(0, 0, 0, 0.25), 0 0 20px rgba(123, 163, 176, 0.5)`;
+        } else {
+            circle.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.25)';
+        }
+    }
+    
+    startSession() {
+        if (!this.sessionStartTime) {
+            this.sessionStartTime = Date.now();
+        }
+    }
+    
+    async endSession() {
+        if (!this.sessionStartTime) return;
+        
+        const sessionDuration = Date.now() - this.sessionStartTime;
+        const currentWPM = this.calculateCurrentWPM();
+        const currentAccuracy = this.calculateGeneralAccuracy();
+        
+        const sessionData = {
+            wpm: currentWPM,
+            accuracy: currentAccuracy,
+            wordsTyped: this.wordsCompleted,
+            charactersTyped: this.totalCharacters,
+            timeSpent: sessionDuration,
+            letterStats: this.getSessionLetterStats()
+        };
+        
+        // Save to Firebase if user is authenticated
+        if (this.isAuthenticated && window.authManager) {
+            await window.authManager.recordSession(sessionData);
+            console.log('Session saved to Firebase:', sessionData);
+        }
+        
+        // Reset session
+        this.sessionStartTime = null;
+    }
+    
+    getSessionLetterStats() {
+        // Return only the session's letter stats (not cumulative)
+        const sessionStats = {};
+        
+        for (const entry of this.accuracyHistory) {
+            const letter = entry.letter;
+            if (!sessionStats[letter]) {
+                sessionStats[letter] = { correct: 0, total: 0 };
+            }
+            sessionStats[letter].total++;
+            if (entry.correct) {
+                sessionStats[letter].correct++;
+            }
+        }
+        
+        return sessionStats;
+    }
+    
+    calculateCurrentWPM() {
+        if (this.wordCompletionTimes.length === 0) return 0;
+        
+        const last10Words = this.wordCompletionTimes.slice(-10);
+        if (last10Words.length === 0) return 0;
+        
+        const totalCharacters = last10Words.reduce((sum, word) => sum + word.characters, 0);
+        const startTime = last10Words[0].startTime;
+        const endTime = last10Words[last10Words.length - 1].timestamp;
+        const timeInMs = endTime - startTime;
+        
+        if (timeInMs <= 0) return 0;
+        
+        const timeInMinutes = timeInMs / 60000;
+        return Math.round((totalCharacters / 5) / timeInMinutes);
+    }
 }
 
 // Initialize the typing trainer when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     new TypingTrainer();
-}); 
+});
