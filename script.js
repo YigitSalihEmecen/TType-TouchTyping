@@ -626,8 +626,8 @@ class TypingTrainer {
             
             this.wordsCompleted++;
             
-            // Auto-save session every 100 words for authenticated users
-            if (this.isAuthenticated && this.wordsCompleted % 100 === 0) {
+            // Auto-save session every 30 words for authenticated users
+            if (this.isAuthenticated && this.wordsCompleted % 30 === 0) {
                 this.saveCurrentSession();
             }
             

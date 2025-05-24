@@ -286,7 +286,10 @@ class AuthManager {
         const authContainer = document.getElementById('authContainer');
         
         statsPanel.style.display = 'block';
+        // Force reflow to ensure display change is applied
+        statsPanel.offsetHeight;
         authContainer.classList.add('stats-open');
+        statsPanel.classList.add('panel-open');
         this.updateStatsDisplay();
     }
 
@@ -295,7 +298,9 @@ class AuthManager {
         const authContainer = document.getElementById('authContainer');
         
         authContainer.classList.remove('stats-open');
-        // Delay hiding the panel to allow animation to complete
+        statsPanel.classList.remove('panel-open');
+        
+        // Wait for animation to complete before hiding
         setTimeout(() => {
             statsPanel.style.display = 'none';
         }, 300);
@@ -307,9 +312,9 @@ class AuthManager {
         // Update overview stats
         document.getElementById('bestWPM').textContent = this.userStats.bestWPM || 0;
         document.getElementById('averageWPM').textContent = this.userStats.averageWPM || 0;
-        document.getElementById('bestAccuracy').textContent = `${this.userStats.bestAccuracy || 0}%`;
         document.getElementById('totalWords').textContent = this.userStats.totalWordsTyped || 0;
         document.getElementById('totalSessions').textContent = this.userStats.sessionsCompleted || 0;
+        document.getElementById('averageAccuracy').textContent = `${this.userStats.averageAccuracy || 0}%`;
         
         // Format time
         const totalMinutes = Math.round((this.userStats.totalTimeSpent || 0) / 60000);

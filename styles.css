@@ -417,7 +417,7 @@ body {
     }
     
     .stats-overview {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 12px;
     }
     
@@ -538,7 +538,12 @@ body {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     z-index: 200;
     overflow: hidden;
-    animation: slideInRight 0.3s ease-out;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-out;
+}
+
+.stats-panel.panel-open {
+    transform: translateX(0);
 }
 
 @keyframes slideInRight {
@@ -571,16 +576,19 @@ body {
     background: none;
     border: none;
     color: rgba(255, 255, 255, 0.7);
-    font-size: 1.5rem;
     cursor: pointer;
-    padding: 5px;
+    padding: 8px;
     border-radius: 50%;
     transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .close-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.9);
+    transform: translateX(2px);
 }
 
 .stats-content {
@@ -598,7 +606,7 @@ body {
 
 .stats-overview {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 16px;
     margin-bottom: 24px;
 }
