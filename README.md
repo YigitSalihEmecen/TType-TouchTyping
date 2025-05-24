@@ -2,6 +2,9 @@
 
 A modern, web-based touch typing trainer with intelligent word selection and comprehensive accuracy tracking.
 
+[🚀 Try it live!](https://yigitsalihemecen.github.io/TType-TouchTyping/)
+
+
 ## Features
 
 - **Google Authentication**: Sign in to save your progress and track statistics across sessions
