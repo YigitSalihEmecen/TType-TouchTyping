@@ -7,8 +7,10 @@ class TypingTrainer {
         this.correctCharacters = 0;
         this.isStarted = false;
         
-        // WPM tracking
-        this.keystrokeHistory = []; // Array of {timestamp, correct: boolean}
+        // WPM tracking - now based on word completion
+        this.wordsCompleted = 0;
+        this.wordStartTime = null;
+        this.wordCompletionTimes = []; // Array of {timestamp, wordLength, correct: boolean}
         this.wpmUpdateInterval = null;
         
         // General accuracy tracking (rolling 1000 characters)
@@ -18,6 +20,10 @@ class TypingTrainer {
         this.letterStats = {};
         this.accuracyHistory = []; // Array of {letter, correct: boolean} for last 500 chars
         this.initializeLetterStats();
+        
+        // Word tracking
+        this.currentWordStartIndex = 0;
+        this.currentWordCorrect = true;
         
         // DOM elements
         this.textDisplay = document.getElementById('textDisplay');
@@ -36,7 +42,7 @@ class TypingTrainer {
         this.createLetterAccuracyDisplay();
         this.initializeEventListeners();
         this.loadWords();
-        this.startWpmTracking();
+        this.startGeneralAccuracyTracking();
     }
     
     initializeLetterStats() {
@@ -544,9 +550,6 @@ class TypingTrainer {
             this.totalCharacters++;
             this.correctCharacters++;
             
-            // Record correct keystroke for WPM calculation
-            this.recordKeystroke(true);
-            
             // Record for general accuracy
             this.recordGeneralAccuracy(true);
             
@@ -555,15 +558,24 @@ class TypingTrainer {
                 this.updateLetterAccuracy(expectedChar, true);
             }
             
+            // Handle word completion tracking
+            if (expectedChar === ' ') {
+                // Word completed - record the completion
+                this.completeWord();
+            } else if (this.wordStartTime === null) {
+                // First letter of a new word - start timing
+                this.startNewWord();
+            }
+            
             // Move to next position only on correct keystroke
             this.currentPosition++;
         } else {
-            // Incorrect keystroke - just mark that this letter had incorrect attempts
-            // Don't change visual state yet - that happens when we advance
-            currentItem.wasIncorrect = true;
+            // Incorrect keystroke - mark current letter as incorrect but DON'T move forward
+            currentItem.isIncorrect = true;
+            currentItem.wasIncorrect = true; // Track that this letter was typed incorrectly
             
-            // Record incorrect keystroke for WPM calculation
-            this.recordKeystroke(false);
+            // Mark current word as having errors
+            this.currentWordCorrect = false;
             
             // Record for general accuracy
             this.recordGeneralAccuracy(false);
@@ -577,58 +589,79 @@ class TypingTrainer {
             this.totalCharacters++;
             
             // DON'T move to next position - wait for correct key
-            // DON'T change visual state - letter stays normal until we advance
         }
         
         this.renderText();
     }
     
-    startWpmTracking() {
-        // Update WPM and general accuracy every 500ms for smooth updates
-        this.wpmUpdateInterval = setInterval(() => {
-            this.updateWpmDisplay();
-            this.updateGeneralAccuracy();
-        }, 500);
+    startNewWord() {
+        this.wordStartTime = Date.now();
+        this.currentWordStartIndex = this.currentPosition;
+        this.currentWordCorrect = true;
+    }
+    
+    completeWord() {
+        if (this.wordStartTime !== null) {
+            const completionTime = Date.now();
+            const wordLength = this.currentPosition - this.currentWordStartIndex;
+            
+            // Record word completion
+            this.wordCompletionTimes.push({
+                timestamp: completionTime,
+                wordLength: wordLength,
+                correct: this.currentWordCorrect,
+                duration: completionTime - this.wordStartTime
+            });
+            
+            this.wordsCompleted++;
+            
+            // Check if we should update WPM (every 10 words)
+            if (this.wordsCompleted % 10 === 0) {
+                this.updateWpmDisplay();
+            }
+            
+            // Reset for next word
+            this.wordStartTime = null;
+            this.currentWordCorrect = true;
+        }
     }
     
     calculateWpm() {
-        const now = Date.now();
-        const fifteenSecondsAgo = now - 15000; // 15 seconds in milliseconds
-        
-        // Filter keystrokes from the last 15 seconds
-        const recentKeystrokes = this.keystrokeHistory.filter(
-            keystroke => keystroke.timestamp >= fifteenSecondsAgo
-        );
-        
-        if (recentKeystrokes.length === 0) {
+        if (this.wordCompletionTimes.length === 0) {
             return 0;
         }
         
-        // Count correct characters in the last 15 seconds
-        const correctCharsInPeriod = recentKeystrokes.filter(k => k.correct).length;
+        // Use last 50 words or all words if less than 50
+        const recentWords = this.wordCompletionTimes.slice(-50);
         
-        // Calculate time span of actual typing (from first to last keystroke in period)
-        const firstKeystroke = recentKeystrokes[0].timestamp;
-        const lastKeystroke = recentKeystrokes[recentKeystrokes.length - 1].timestamp;
-        const typingDuration = Math.max(lastKeystroke - firstKeystroke, 1000); // At least 1 second
+        if (recentWords.length === 0) {
+            return 0;
+        }
         
-        // WPM = (characters / 5) / (time in minutes)
-        // Using actual typing duration rather than full 15 seconds for more accurate measurement
-        const timeInMinutes = typingDuration / 60000;
-        const wpm = Math.round((correctCharsInPeriod / 5) / timeInMinutes);
+        // Calculate total time span from first to last word in the sample
+        const firstWordTime = recentWords[0].timestamp;
+        const lastWordTime = recentWords[recentWords.length - 1].timestamp;
+        const totalTimeMs = lastWordTime - firstWordTime;
         
-        return Math.max(0, wpm); // Don't show negative WPM
+        if (totalTimeMs <= 0) {
+            return 0;
+        }
+        
+        // Count correctly typed words
+        const correctWords = recentWords.filter(word => word.correct).length;
+        
+        // WPM = (correct words) / (time in minutes)
+        const timeInMinutes = totalTimeMs / 60000;
+        const wpm = Math.round(correctWords / timeInMinutes);
+        
+        return Math.max(0, wpm);
     }
     
-    updateWpmDisplay() {
-        const wpm = this.calculateWpm();
-        this.wpmValue.textContent = wpm;
-        
-        // Clean up old keystrokes (older than 15 seconds)
-        const fifteenSecondsAgo = Date.now() - 15000;
-        this.keystrokeHistory = this.keystrokeHistory.filter(
-            keystroke => keystroke.timestamp >= fifteenSecondsAgo
-        );
+    startGeneralAccuracyTracking() {
+        // Update general accuracy every 500ms for smooth updates
+        this.wpmUpdateInterval = setInterval(() => {
+            this.updateGeneralAccuracy();
+        }, 500);
     }
     
     calculateGeneralAccuracy() {
@@ -652,17 +685,18 @@ class TypingTrainer {
         }
     }
     
-    recordKeystroke(correct) {
-        this.keystrokeHistory.push({
-            timestamp: Date.now(),
-            correct: correct
-        });
-    }
-    
     recordGeneralAccuracy(correct) {
         this.generalAccuracyHistory.push({
             correct: correct
         });
+    }
+    
+    updateWpmDisplay() {
+        const wpm = this.calculateWpm();
+        this.wpmValue.textContent = wpm;
+        
+        console.log(`WPM updated after ${this.wordsCompleted} words: ${wpm} WPM`);
+        console.log(`Based on last ${Math.min(50, this.wordCompletionTimes.length)} words`);
     }
     
     // Clean up method for when the app is closed
