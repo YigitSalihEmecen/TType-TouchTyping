@@ -11,6 +11,9 @@ class TypingTrainer {
         this.keystrokeHistory = []; // Array of {timestamp, correct: boolean}
         this.wpmUpdateInterval = null;
         
+        // General accuracy tracking (rolling 1000 characters)
+        this.generalAccuracyHistory = []; // Array of {correct: boolean} for last 1000 chars
+        
         // Letter accuracy tracking (rolling 500 characters)
         this.letterStats = {};
         this.accuracyHistory = []; // Array of {letter, correct: boolean} for last 500 chars
@@ -23,6 +26,7 @@ class TypingTrainer {
         this.letterAccuracyContainer = document.getElementById('letterAccuracy');
         this.wpmCounter = document.getElementById('wpmCounter');
         this.wpmValue = document.getElementById('wpmValue');
+        this.generalAccuracyValue = document.getElementById('generalAccuracyValue');
         
         // Create text content container
         this.textContentElement = document.createElement('div');
@@ -223,17 +227,23 @@ class TypingTrainer {
                 return b.total - a.total;
             });
         
-        // If we don't have enough typed letters, add random letters to fill the list
+        // If we don't have enough typed letters, add letters that haven't been practiced
         const result = typedLetters.slice(0, count).map(item => item.letter);
         
-        // Fill remaining slots with random letters if needed
+        // Ensure all letters get some practice by including unpracticed letters
         if (result.length < count) {
             const allLetters = 'abcdefghijklmnopqrstuvwxyz'.split('');
-            const remainingLetters = allLetters.filter(letter => !result.includes(letter));
+            const unpracticedLetters = allLetters.filter(letter => !result.includes(letter));
             
-            while (result.length < count && remainingLetters.length > 0) {
-                const randomIndex = Math.floor(Math.random() * remainingLetters.length);
-                result.push(remainingLetters.splice(randomIndex, 1)[0]);
+            // Prioritize less common letters like z, j, q, x, etc.
+            const rareLetters = ['z', 'j', 'q', 'x', 'v', 'k', 'w', 'y'];
+            const prioritizedUnpracticed = [
+                ...unpracticedLetters.filter(letter => rareLetters.includes(letter)),
+                ...unpracticedLetters.filter(letter => !rareLetters.includes(letter))
+            ];
+            
+            while (result.length < count && prioritizedUnpracticed.length > 0) {
+                result.push(prioritizedUnpracticed.shift());
             }
         }
         
@@ -352,7 +362,10 @@ class TypingTrainer {
             span.className = 'letter';
             span.setAttribute('data-index', index);
             
-            if (item.isCorrect) {
+            if (item.staysIncorrect) {
+                // Letters that were typed incorrectly stay red permanently
+                span.classList.add('permanently-incorrect');
+            } else if (item.isCorrect) {
                 span.classList.add('correct');
             } else if (item.isIncorrect) {
                 span.classList.add('incorrect');
@@ -385,8 +398,14 @@ class TypingTrainer {
         const textOffset = 8; // pixels to offset text to the left
         
         // Move text left by the actual cumulative width plus offset
-        // This ensures the current letter is always aligned with the center cursor
+        // Remove transition temporarily to prevent drift
+        this.textContentElement.style.transition = 'none';
         this.textContentElement.style.transform = `translateY(-50%) translateX(-${totalWidth + textOffset}px)`;
+        
+        // Re-enable transition after a brief delay for smooth future movements
+        setTimeout(() => {
+            this.textContentElement.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        }, 10);
     }
     
     initializeEventListeners() {
@@ -417,8 +436,13 @@ class TypingTrainer {
     
     handleKeyPress(e) {
         // Ignore modifier keys and function keys
-        if (e.ctrlKey || e.metaKey || e.altKey || e.key.length > 1 && e.key !== ' ' && e.key !== 'Backspace') {
+        if (e.ctrlKey || e.metaKey || e.altKey || e.key.length > 1 && e.key !== ' ') {
             return;
+        }
+        
+        // Disable backspace/delete functionality for muscle memory training
+        if (e.key === 'Backspace' || e.key === 'Delete') {
+            return; // Simply ignore these keys
         }
         
         // Start on first meaningful keypress
@@ -426,12 +450,6 @@ class TypingTrainer {
             this.isStarted = true;
             this.instruction.textContent = '';
             this.cursor.style.display = 'block';
-        }
-        
-        // Handle backspace
-        if (e.key === 'Backspace') {
-            this.handleBackspace();
-            return;
         }
         
         // Only process single characters and space
@@ -471,6 +489,9 @@ class TypingTrainer {
             // Record correct keystroke for WPM calculation
             this.recordKeystroke(true);
             
+            // Record for general accuracy
+            this.recordGeneralAccuracy(true);
+            
             // Update letter-specific accuracy for letters (not spaces)
             if (expectedChar !== ' ' && expectedChar.match(/[a-z]/)) {
                 this.updateLetterAccuracy(expectedChar, true);
@@ -479,47 +500,33 @@ class TypingTrainer {
             // Move to next position
             this.currentPosition++;
         } else {
-            // Incorrect keystroke - mark as incorrect but don't advance
+            // Incorrect keystroke - mark as incorrect and move forward anyway
             currentItem.isIncorrect = true;
+            currentItem.staysIncorrect = true; // Mark to stay red permanently
             
             // Record incorrect keystroke for WPM calculation
             this.recordKeystroke(false);
+            
+            // Record for general accuracy
+            this.recordGeneralAccuracy(false);
             
             // Update letter-specific accuracy for letters (not spaces)
             if (expectedChar !== ' ' && expectedChar.match(/[a-z]/)) {
                 this.updateLetterAccuracy(expectedChar, false);
             }
+            
+            // Still move to next position (no backspace allowed)
+            this.currentPosition++;
         }
         
         this.renderText();
     }
     
-    handleBackspace() {
-        if (this.currentPosition > 0) {
-            // Move back one position
-            this.currentPosition--;
-            const currentItem = this.textContent[this.currentPosition];
-            
-            // Reset the item's state
-            if (currentItem.isCorrect) {
-                this.correctCharacters--;
-            }
-            currentItem.isCorrect = false;
-            currentItem.isIncorrect = false;
-            
-            // Adjust character counts
-            if (this.totalCharacters > 0) {
-                this.totalCharacters--;
-            }
-            
-            this.renderText();
-        }
-    }
-    
     startWpmTracking() {
-        // Update WPM every 500ms for smooth updates
+        // Update WPM and general accuracy every 500ms for smooth updates
         this.wpmUpdateInterval = setInterval(() => {
             this.updateWpmDisplay();
+            this.updateGeneralAccuracy();
         }, 500);
     }
     
@@ -563,9 +570,36 @@ class TypingTrainer {
         );
     }
     
+    calculateGeneralAccuracy() {
+        if (this.generalAccuracyHistory.length === 0) {
+            return 100;
+        }
+        
+        const correctCount = this.generalAccuracyHistory.filter(entry => entry.correct).length;
+        return Math.round((correctCount / this.generalAccuracyHistory.length) * 100);
+    }
+    
+    updateGeneralAccuracy() {
+        const accuracy = this.calculateGeneralAccuracy();
+        if (this.generalAccuracyValue) {
+            this.generalAccuracyValue.textContent = accuracy;
+        }
+        
+        // Clean up old entries (older than 1000 characters)
+        if (this.generalAccuracyHistory.length > 1000) {
+            this.generalAccuracyHistory = this.generalAccuracyHistory.slice(-1000);
+        }
+    }
+    
     recordKeystroke(correct) {
         this.keystrokeHistory.push({
             timestamp: Date.now(),
+            correct: correct
+        });
+    }
+    
+    recordGeneralAccuracy(correct) {
+        this.generalAccuracyHistory.push({
             correct: correct
         });
     }

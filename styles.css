@@ -107,6 +107,11 @@ body {
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
 }
 
+.letter.permanently-incorrect {
+    color: #FF8A95;
+    text-shadow: 0 0 8px rgba(255, 138, 149, 0.4);
+}
+
 .letter-accuracy {
     display: flex;
     flex-direction: column;
@@ -218,6 +223,39 @@ body {
     order: 2;
 }
 
+.general-accuracy {
+    position: absolute;
+    top: -100px;
+    right: 20px;
+    font-family: 'DM Mono', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+    font-size: 1.5rem;
+    font-weight: 300;
+    color: rgba(255, 255, 255, 0.9);
+    text-align: center;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.general-accuracy-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 400;
+    margin-bottom: 4px;
+    order: 1;
+}
+
+.general-accuracy-value {
+    font-size: 2rem;
+    color: #7BA3B0;
+    display: block;
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    order: 2;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .text-container {
@@ -279,5 +317,21 @@ body {
     
     .keyboard-row.bottom-row {
         margin-left: 48px;
+    }
+    
+    .general-accuracy {
+        top: -80px;
+        right: 15px;
+        font-size: 1.2rem;
+    }
+    
+    .general-accuracy-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.12em;
+        margin-bottom: 2px;
+    }
+    
+    .general-accuracy-value {
+        font-size: 1.5rem;
     }
 } 
