@@ -605,19 +605,21 @@ class TypingTrainer {
             const completionTime = Date.now();
             const wordLength = this.currentPosition - this.currentWordStartIndex;
             
-            // Record word completion
+            // Record word completion with character count
             this.wordCompletionTimes.push({
                 timestamp: completionTime,
                 wordLength: wordLength,
                 correct: this.currentWordCorrect,
-                duration: completionTime - this.wordStartTime
+                duration: completionTime - this.wordStartTime,
+                startTime: this.wordStartTime,
+                characters: wordLength // Include space in character count
             });
             
             this.wordsCompleted++;
             
             // Check if we should update WPM (every 10 words)
             if (this.wordsCompleted % 10 === 0) {
-                this.updateWpmDisplay();
+                this.updateWpmAfter10Words();
             }
             
             // Reset for next word
@@ -626,35 +628,39 @@ class TypingTrainer {
         }
     }
     
-    calculateWpm() {
-        if (this.wordCompletionTimes.length === 0) {
-            return 0;
+    updateWpmAfter10Words() {
+        if (this.wordCompletionTimes.length < 10) {
+            return;
         }
         
-        // Use last 50 words or all words if less than 50
-        const recentWords = this.wordCompletionTimes.slice(-50);
+        // Get the last 10 completed words
+        const last10Words = this.wordCompletionTimes.slice(-10);
         
-        if (recentWords.length === 0) {
-            return 0;
+        // Calculate total characters in these 10 words
+        const totalCharacters = last10Words.reduce((sum, word) => sum + word.characters, 0);
+        
+        // Calculate time span from first to last word in this batch
+        const startTime = last10Words[0].startTime;
+        const endTime = last10Words[last10Words.length - 1].timestamp;
+        const timeInMs = endTime - startTime;
+        
+        if (timeInMs <= 0) {
+            return;
         }
         
-        // Calculate total time span from first to last word in the sample
-        const firstWordTime = recentWords[0].timestamp;
-        const lastWordTime = recentWords[recentWords.length - 1].timestamp;
-        const totalTimeMs = lastWordTime - firstWordTime;
+        // Convert to minutes
+        const timeInMinutes = timeInMs / 60000;
         
-        if (totalTimeMs <= 0) {
-            return 0;
-        }
+        // Calculate WPM: (characters / 5) / time in minutes
+        const wpm = Math.round((totalCharacters / 5) / timeInMinutes);
         
-        // Count correctly typed words
-        const correctWords = recentWords.filter(word => word.correct).length;
+        // Update display
+        this.wpmValue.textContent = Math.max(0, wpm);
         
-        // WPM = (correct words) / (time in minutes)
-        const timeInMinutes = totalTimeMs / 60000;
-        const wpm = Math.round(correctWords / timeInMinutes);
-        
-        return Math.max(0, wpm);
+        console.log(`WPM updated after ${this.wordsCompleted} words:`);
+        console.log(`- Last 10 words: ${totalCharacters} characters`);
+        console.log(`- Time span: ${(timeInMs / 1000).toFixed(1)} seconds`);
+        console.log(`- WPM: (${totalCharacters} ÷ 5) ÷ ${timeInMinutes.toFixed(2)} = ${wpm}`);
     }
     
     startGeneralAccuracyTracking() {
@@ -689,14 +695,6 @@ class TypingTrainer {
         this.generalAccuracyHistory.push({
             correct: correct
         });
-    }
-    
-    updateWpmDisplay() {
-        const wpm = this.calculateWpm();
-        this.wpmValue.textContent = wpm;
-        
-        console.log(`WPM updated after ${this.wordsCompleted} words: ${wpm} WPM`);
-        console.log(`Based on last ${Math.min(50, this.wordCompletionTimes.length)} words`);
     }
     
     // Clean up method for when the app is closed
